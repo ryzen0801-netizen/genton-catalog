@@ -21,17 +21,17 @@
         <div id="itemCount" class="text-xs font-bold bg-gray-100 px-3 py-1 rounded-full">連線中...</div>
     </nav>
 
-    <section class="bg-white border-b p-6 shadow-sm">
+    <section class="bg-white border-b p-6">
         <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input type="text" id="keywordSearch" placeholder="🔍 搜尋型號或關鍵字..." 
+            <input type="text" id="keywordSearch" oninput="filterData()" placeholder="🔍 搜尋型號或關鍵字..." 
                    class="border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none shadow-inner text-sm">
             
-            <select id="brandFilter" class="border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none bg-white text-sm">
+            <select id="brandFilter" onchange="updateCategoryMenu(); filterData();" class="border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none bg-white text-sm">
                 <option value="">所有品牌</option>
             </select>
 
-            <select id="categoryFilter" class="border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none bg-white text-sm">
-                <option value="">請先選擇品牌</option>
+            <select id="categoryFilter" onchange="filterData()" class="border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none bg-white text-sm">
+                <option value="">所有分類</option>
             </select>
         </div>
     </section>
@@ -39,133 +39,93 @@
     <main class="max-w-7xl mx-auto p-6 min-h-screen">
         <div id="loader" class="flex flex-col items-center py-20">
             <div class="loading-spinner w-10 h-10 border-4 border-gray-200 rounded-full mb-4"></div>
-            <p class="text-gray-400">正在獲取最新雲端產品資料...</p>
+            <p class="text-gray-400">同步雲端資料中...</p>
         </div>
-
         <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
-
-        <div id="noData" class="hidden text-center py-20 text-gray-400">
-            <p class="text-lg font-bold">沒有找到符合條件的產品</p>
-        </div>
+        <div id="noData" class="hidden text-center py-20 text-gray-400">沒有找到產品</div>
     </main>
 
     <script>
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEaN95uQx-YbX1GKTcX8Og3GhmvgVNFgGocAopyg7bD6TvyUOOWUgiJAdbvX0GAKHpfs6dw0w2TGH3/pub?output=csv';
         let allProducts = [];
+        let colMap = { brand: '品牌', cat: '分類', part: '料號', name: '品項', file: '型錄檔名' };
 
-        // 初始化：抓取資料
         function init() {
             Papa.parse(csvUrl, {
                 download: true,
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
-                    allProducts = results.data.filter(p => p['品牌'] && p['料號']);
-                    if (allProducts.length === 0) {
-                        alert("警告：雲端表單讀取成功，但找不到『品牌』或『料號』欄位資料！");
-                        return;
+                    const data = results.data;
+                    if(data.length > 0) {
+                        // 自動偵測欄位名稱 (相容不同寫法)
+                        const first = data[0];
+                        const keys = Object.keys(first);
+                        colMap.brand = keys.find(k => k.includes('品牌') || k.includes('廠牌')) || '品牌';
+                        colMap.cat = keys.find(k => k.includes('分類') || k.includes('類別')) || '分類';
+                        colMap.part = keys.find(k => k.includes('料號') || k.includes('型號')) || '料號';
+                        colMap.name = keys.find(k => k.includes('品項') || k.includes('名稱')) || '品項';
+                        
+                        allProducts = data.filter(p => p[colMap.brand] && p[colMap.part]);
+                        
+                        buildBrandMenu();
+                        updateCategoryMenu(); // 初始載入分類
+                        filterData();
+                        document.getElementById('loader').classList.add('hidden');
                     }
-                    buildBrandMenu(); // 1. 建立品牌選單
-                    renderProducts(allProducts); // 2. 初始渲染
-                    document.getElementById('loader').classList.add('hidden');
-                },
-                error: function() { alert("雲端資料讀取失敗，請確認 Google Sheets 是否發佈。"); }
+                }
             });
         }
 
-        // 1. 建立「品牌」下拉選單
         function buildBrandMenu() {
             const bSelect = document.getElementById('brandFilter');
-            const brands = [...new Set(allProducts.map(p => p['品牌']))].sort();
-            
-            brands.forEach(b => {
-                const opt = document.createElement('option');
-                opt.value = b;
-                opt.textContent = b;
-                bSelect.appendChild(opt);
-            });
-
-            // 當品牌改變時，連動更新分類
-            bSelect.addEventListener('change', function() {
-                buildCategoryMenu(this.value);
-                filterData();
-            });
-
-            // 初始也跑一次分類選單 (顯示所有分類)
-            buildCategoryMenu("");
+            const brands = [...new Set(allProducts.map(p => p[colMap.brand]))].filter(Boolean).sort();
+            brands.forEach(b => bSelect.add(new Option(b, b)));
         }
 
-        // 2. 建立「連動分類」選單
-        function buildCategoryMenu(selectedBrand) {
+        // 核心：連動更新分類選單
+        function updateCategoryMenu() {
+            const bValue = document.getElementById('brandFilter').value;
             const cSelect = document.getElementById('categoryFilter');
             cSelect.innerHTML = '<option value="">所有分類</option>';
 
-            let filteredCats = [];
-            if (selectedBrand === "") {
-                filteredCats = [...new Set(allProducts.map(p => p['分類']))].filter(Boolean).sort();
-            } else {
-                // 關鍵：只抓取屬於該品牌的分類
-                filteredCats = [...new Set(
-                    allProducts.filter(p => p['品牌'] === selectedBrand).map(p => p['分類'])
-                )].filter(Boolean).sort();
-            }
+            // 根據選定的品牌過濾出該品牌有的分類
+            const filteredData = bValue === "" ? allProducts : allProducts.filter(p => p[colMap.brand] === bValue);
+            const cats = [...new Set(filteredData.map(p => p[colMap.cat]))].filter(Boolean).sort();
 
-            filteredCats.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c;
-                opt.textContent = c;
-                cSelect.appendChild(opt);
-            });
+            cats.forEach(c => cSelect.add(new Option(c, c)));
         }
 
-        // 3. 渲染卡片
-        function renderProducts(data) {
-            const grid = document.getElementById('productGrid');
-            const count = document.getElementById('itemCount');
-            grid.innerHTML = '';
-            count.innerText = `ITEMS: ${data.length}`;
-
-            if (data.length === 0) {
-                document.getElementById('noData').classList.remove('hidden');
-                return;
-            }
-            document.getElementById('noData').classList.add('hidden');
-
-            data.forEach(p => {
-                const imgSrc = p['圖片檔名'] ? `images/${p['圖片檔名']}` : 'https://placehold.co/400x300?text=No+Image';
-                const card = `
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col p-4 hover:shadow-md transition">
-                        <img src="${imgSrc}" class="w-full h-40 object-contain mb-4" onerror="this.src='https://placehold.co/400x300?text=Genton'">
-                        <div class="flex-grow">
-                            <span class="text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded font-bold">${p['品牌']}</span>
-                            <div class="text-xs text-gray-400 mt-1">${p['分類']}</div>
-                            <div class="font-mono font-bold text-orange-500 mt-1">${p['料號']}</div>
-                            <div class="text-sm font-bold text-gray-700 mt-1 line-clamp-2">${p['品項']}</div>
-                        </div>
-                        <button onclick="window.open('${p['型錄檔名']||'#'}')" class="mt-4 w-full py-2 bg-gray-50 hover:bg-orange hover:text-white text-gray-500 rounded-lg text-xs font-bold transition">VIEW DETAIL</button>
-                    </div>`;
-                grid.innerHTML += card;
-            });
-        }
-
-        // 4. 綜合過濾
         function filterData() {
             const kw = document.getElementById('keywordSearch').value.toLowerCase();
             const b = document.getElementById('brandFilter').value;
             const c = document.getElementById('categoryFilter').value;
-
+            const grid = document.getElementById('productGrid');
+            
             const filtered = allProducts.filter(p => {
-                const matchK = p['品項'].toLowerCase().includes(kw) || p['料號'].toLowerCase().includes(kw);
-                const matchB = b === "" || p['品牌'] === b;
-                const matchC = c === "" || p['分類'] === c;
+                const matchK = (p[colMap.name]+p[colMap.part]).toLowerCase().includes(kw);
+                const matchB = b === "" || p[colMap.brand] === b;
+                const matchC = c === "" || p[colMap.cat] === c;
                 return matchK && matchB && matchC;
             });
-            renderProducts(filtered);
-        }
 
-        // 監聽
-        document.getElementById('keywordSearch').addEventListener('input', filterData);
-        document.getElementById('categoryFilter').addEventListener('change', filterData);
+            grid.innerHTML = '';
+            document.getElementById('itemCount').innerText = `ITEMS: ${filtered.length}`;
+            document.getElementById('noData').classList.toggle('hidden', filtered.length > 0);
+
+            filtered.forEach(p => {
+                const imgSrc = p['圖片檔名'] ? `images/${p['圖片檔名']}` : 'https://placehold.co/400x300?text=No+Image';
+                grid.innerHTML += `
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition">
+                        <img src="${imgSrc}" class="w-full h-32 object-contain mb-4" onerror="this.src='https://placehold.co/400x300?text=Genton'">
+                        <span class="text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded font-bold">${p[colMap.brand]}</span>
+                        <div class="text-xs text-gray-400 mt-1">${p[colMap.cat]}</div>
+                        <div class="font-mono font-bold text-orange-500 text-sm mt-1">${p[colMap.part]}</div>
+                        <div class="text-xs font-bold text-gray-700 mt-1 line-clamp-2 h-8">${p[colMap.name]}</div>
+                        <button onclick="window.open('${p[colMap.file]||'#'}')" class="mt-4 w-full py-2 bg-gray-50 hover:bg-orange hover:text-white text-gray-500 rounded-lg text-[10px] font-bold transition">SPEC</button>
+                    </div>`;
+            });
+        }
 
         init();
     </script>
