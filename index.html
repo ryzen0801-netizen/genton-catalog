@@ -3,146 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>正通科技 - 產品查詢系統</title>
+    <title>正通科技 - 產品目錄</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { font-family: "Microsoft JhengHei", "微軟正黑體", sans-serif; background-color: #fcfcfc; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f9fafb; }
         .brand-orange { color: #F97316; }
         .bg-orange { background-color: #F97316; }
-        .border-orange { border-color: #F97316; }
         .loading-spinner { border-top-color: #F97316; animation: spinner 1s linear infinite; }
         @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .product-card:hover { transform: translateY(-4px); transition: all 0.3s ease; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
 <body class="text-gray-800">
 
-    <nav class="bg-white shadow-md border-b-4 border-orange sticky top-0 z-50 px-6 py-4">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-            <h1 class="text-2xl font-black brand-orange flex items-center">
-                正通科技 <span class="text-gray-400 text-lg font-light ml-2">| 產品目錄</span>
-            </h1>
-            <div id="itemCount" class="text-sm bg-orange/10 text-orange-600 px-4 py-1 rounded-full font-bold">
-                資料讀取中...
-            </div>
-        </div>
+    <nav class="bg-white shadow-sm border-b-4 border-orange sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
+        <h1 class="text-xl font-black brand-orange">正通科技 | <span class="text-gray-400 font-normal">PRODUCT</span></h1>
+        <div id="itemCount" class="text-xs font-bold bg-gray-100 px-3 py-1 rounded-full">連線中...</div>
     </nav>
 
-    <section class="bg-gray-50 border-b border-gray-200 p-6">
-        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="md:col-span-2">
-                <label class="block text-xs font-bold text-gray-500 mb-1 ml-1">快速搜尋 (型號、規格、名稱)</label>
-                <input type="text" id="keywordSearch" placeholder="🔍 輸入關鍵字..." 
-                       class="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-orange outline-none bg-white transition-all shadow-sm">
-            </div>
+    <section class="bg-white border-b p-6 shadow-sm">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input type="text" id="keywordSearch" placeholder="🔍 搜尋型號或關鍵字..." 
+                   class="border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none shadow-inner text-sm">
             
-            <div>
-                <label class="block text-xs font-bold text-gray-500 mb-1 ml-1">品牌</label>
-                <select id="brandFilter" class="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-orange outline-none bg-white shadow-sm cursor-pointer">
-                    <option value="">所有品牌</option>
-                </select>
-            </div>
+            <select id="brandFilter" class="border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none bg-white text-sm">
+                <option value="">所有品牌</option>
+            </select>
 
-            <div>
-                <label class="block text-xs font-bold text-gray-500 mb-1 ml-1">產品分類</label>
-                <select id="categoryFilter" class="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-orange outline-none bg-white shadow-sm cursor-pointer">
-                    <option value="">所有分類</option>
-                </select>
-            </div>
+            <select id="categoryFilter" class="border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none bg-white text-sm">
+                <option value="">請先選擇品牌</option>
+            </select>
         </div>
     </section>
 
-    <main class="max-w-7xl mx-auto p-6 min-h-[60vh]">
+    <main class="max-w-7xl mx-auto p-6 min-h-screen">
         <div id="loader" class="flex flex-col items-center py-20">
-            <div class="loading-spinner w-12 h-12 border-4 border-gray-200 rounded-full mb-4"></div>
-            <p class="text-gray-500 font-medium">正在連接雲端資料庫...</p>
+            <div class="loading-spinner w-10 h-10 border-4 border-gray-200 rounded-full mb-4"></div>
+            <p class="text-gray-400">正在獲取最新雲端產品資料...</p>
         </div>
 
         <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
 
-        <div id="noData" class="hidden text-center py-20">
-            <div class="text-6xl mb-4">🚫</div>
-            <p class="text-xl text-gray-400 font-bold">找不到相符的產品</p>
+        <div id="noData" class="hidden text-center py-20 text-gray-400">
+            <p class="text-lg font-bold">沒有找到符合條件的產品</p>
         </div>
     </main>
-
-    <footer class="bg-white border-t border-gray-100 py-8 text-center text-gray-400 text-sm">
-        &copy; 2024 正通科技 Genton Technology
-    </footer>
 
     <script>
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEaN95uQx-YbX1GKTcX8Og3GhmvgVNFgGocAopyg7bD6TvyUOOWUgiJAdbvX0GAKHpfs6dw0w2TGH3/pub?output=csv';
         let allProducts = [];
 
-        // 1. 初始化
+        // 初始化：抓取資料
         function init() {
             Papa.parse(csvUrl, {
                 download: true,
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
-                    allProducts = results.data.filter(p => p['品牌'] || p['料號']);
+                    allProducts = results.data.filter(p => p['品牌'] && p['料號']);
                     if (allProducts.length === 0) {
-                        showError('讀取成功但無資料');
+                        alert("警告：雲端表單讀取成功，但找不到『品牌』或『料號』欄位資料！");
                         return;
                     }
-                    setupBrandFilter();
-                    updateCategoryOptions(""); // 初始載入所有分類
-                    renderProducts(allProducts);
+                    buildBrandMenu(); // 1. 建立品牌選單
+                    renderProducts(allProducts); // 2. 初始渲染
                     document.getElementById('loader').classList.add('hidden');
                 },
-                error: function() { showError('連線失敗！請檢查 CSV 發佈網址'); }
+                error: function() { alert("雲端資料讀取失敗，請確認 Google Sheets 是否發佈。"); }
             });
         }
 
-        function showError(msg) {
-            document.getElementById('loader').innerHTML = `<div class="text-red-600 font-bold">${msg}</div>`;
-        }
-
-        // 2. 建立品牌選單 (只跑一次)
-        function setupBrandFilter() {
-            const brandSelect = document.getElementById('brandFilter');
-            const brands = [...new Set(allProducts.map(p => p['品牌']))].filter(Boolean).sort();
-            brands.forEach(b => brandSelect.add(new Option(b, b)));
-
-            // 監聽品牌切換：觸發分類選單更新 + 過濾產品
-            brandSelect.addEventListener('change', function() {
-                updateCategoryOptions(this.value);
-                filterContent(); 
+        // 1. 建立「品牌」下拉選單
+        function buildBrandMenu() {
+            const bSelect = document.getElementById('brandFilter');
+            const brands = [...new Set(allProducts.map(p => p['品牌']))].sort();
+            
+            brands.forEach(b => {
+                const opt = document.createElement('option');
+                opt.value = b;
+                opt.textContent = b;
+                bSelect.appendChild(opt);
             });
+
+            // 當品牌改變時，連動更新分類
+            bSelect.addEventListener('change', function() {
+                buildCategoryMenu(this.value);
+                filterData();
+            });
+
+            // 初始也跑一次分類選單 (顯示所有分類)
+            buildCategoryMenu("");
         }
 
-        // 3. 核心功能：動態更新分類選單
-        function updateCategoryOptions(selectedBrand) {
-            const categorySelect = document.getElementById('categoryFilter');
-            const currentSelectedCat = categorySelect.value; // 記住目前選的分類
+        // 2. 建立「連動分類」選單
+        function buildCategoryMenu(selectedBrand) {
+            const cSelect = document.getElementById('categoryFilter');
+            cSelect.innerHTML = '<option value="">所有分類</option>';
 
-            let availableCats;
+            let filteredCats = [];
             if (selectedBrand === "") {
-                availableCats = [...new Set(allProducts.map(p => p['分類']))].filter(Boolean).sort();
+                filteredCats = [...new Set(allProducts.map(p => p['分類']))].filter(Boolean).sort();
             } else {
-                // 過濾：只找出該品牌下存在的分類
-                availableCats = [...new Set(
+                // 關鍵：只抓取屬於該品牌的分類
+                filteredCats = [...new Set(
                     allProducts.filter(p => p['品牌'] === selectedBrand).map(p => p['分類'])
                 )].filter(Boolean).sort();
             }
 
-            categorySelect.innerHTML = '<option value="">所有分類</option>';
-            availableCats.forEach(c => categorySelect.add(new Option(c, c)));
-
-            // 如果原本選的分類在新清單也存在，就保留選擇
-            if (availableCats.includes(currentSelectedCat)) {
-                categorySelect.value = currentSelectedCat;
-            }
+            filteredCats.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                cSelect.appendChild(opt);
+            });
         }
 
-        // 4. 搜尋與渲染
+        // 3. 渲染卡片
         function renderProducts(data) {
             const grid = document.getElementById('productGrid');
-            const countDisplay = document.getElementById('itemCount');
+            const count = document.getElementById('itemCount');
             grid.innerHTML = '';
-            countDisplay.innerText = `產品總數：${data.length}`;
+            count.innerText = `ITEMS: ${data.length}`;
 
             if (data.length === 0) {
                 document.getElementById('noData').classList.remove('hidden');
@@ -152,47 +133,39 @@
 
             data.forEach(p => {
                 const imgSrc = p['圖片檔名'] ? `images/${p['圖片檔名']}` : 'https://placehold.co/400x300?text=No+Image';
-                const fileLink = p['型錄檔名'] ? p['型錄檔名'] : '#';
-                
-                grid.innerHTML += `
-                    <div class="product-card bg-white border border-gray-100 rounded-2xl shadow-sm flex flex-col overflow-hidden group">
-                        <div class="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
-                            <img src="${imgSrc}" class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://placehold.co/400x300?text=Wait+Image'">
+                const card = `
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col p-4 hover:shadow-md transition">
+                        <img src="${imgSrc}" class="w-full h-40 object-contain mb-4" onerror="this.src='https://placehold.co/400x300?text=Genton'">
+                        <div class="flex-grow">
+                            <span class="text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded font-bold">${p['品牌']}</span>
+                            <div class="text-xs text-gray-400 mt-1">${p['分類']}</div>
+                            <div class="font-mono font-bold text-orange-500 mt-1">${p['料號']}</div>
+                            <div class="text-sm font-bold text-gray-700 mt-1 line-clamp-2">${p['品項']}</div>
                         </div>
-                        <div class="p-4 flex-grow">
-                            <div class="flex items-center gap-2 mb-2">
-                                <span class="bg-orange text-white text-[10px] font-black px-2 py-0.5 rounded shadow-sm">${p['品牌'] || 'GENTON'}</span>
-                                <span class="text-gray-400 text-[10px] font-bold uppercase">${p['分類'] || 'General'}</span>
-                            </div>
-                            <h4 class="text-xs font-mono text-orange font-bold tracking-tighter mb-1">${p['料號'] || '-'}</h4>
-                            <h3 class="text-sm font-bold text-gray-700 leading-snug line-clamp-2 h-10">${p['品項'] || '未命名產品'}</h3>
-                        </div>
-                        <div class="p-4 pt-0">
-                            <button onclick="if('${fileLink}'!=='#') window.open('${fileLink}'); else alert('目前暫無型錄')" 
-                                    class="w-full border-2 border-orange text-orange hover:bg-orange hover:text-white transition-all py-2 rounded-xl text-xs font-black">
-                                VIEW SPEC
-                            </button>
-                        </div>
+                        <button onclick="window.open('${p['型錄檔名']||'#'}')" class="mt-4 w-full py-2 bg-gray-50 hover:bg-orange hover:text-white text-gray-500 rounded-lg text-xs font-bold transition">VIEW DETAIL</button>
                     </div>`;
+                grid.innerHTML += card;
             });
         }
 
-        function filterContent() {
+        // 4. 綜合過濾
+        function filterData() {
             const kw = document.getElementById('keywordSearch').value.toLowerCase();
-            const brand = document.getElementById('brandFilter').value;
-            const cat = document.getElementById('categoryFilter').value;
+            const b = document.getElementById('brandFilter').value;
+            const c = document.getElementById('categoryFilter').value;
 
             const filtered = allProducts.filter(p => {
-                const searchStr = `${p['料號']} ${p['品項']} ${p['分類']}`.toLowerCase();
-                return searchStr.includes(kw) && 
-                       (brand === "" || p['品牌'] === brand) && 
-                       (cat === "" || p['分類'] === cat);
+                const matchK = p['品項'].toLowerCase().includes(kw) || p['料號'].toLowerCase().includes(kw);
+                const matchB = b === "" || p['品牌'] === b;
+                const matchC = c === "" || p['分類'] === c;
+                return matchK && matchB && matchC;
             });
             renderProducts(filtered);
         }
 
-        document.getElementById('keywordSearch').addEventListener('input', filterContent);
-        document.getElementById('categoryFilter').addEventListener('change', filterContent);
+        // 監聽
+        document.getElementById('keywordSearch').addEventListener('input', filterData);
+        document.getElementById('categoryFilter').addEventListener('change', filterData);
 
         init();
     </script>
