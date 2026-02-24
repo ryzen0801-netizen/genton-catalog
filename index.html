@@ -3,52 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>正通科技 - 產品目錄</title>
+    <title>正通科技 - 產品目錄系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f9fafb; }
+        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f8fafc; }
         .brand-orange { color: #F97316; }
         .bg-orange { background-color: #F97316; }
         .loading-spinner { border-top-color: #F97316; animation: spinner 1s linear infinite; }
         @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .card-hover:hover { transform: translateY(-5px); transition: all 0.3s ease; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        /* 常備品標籤發光效果 */
+        .stock-badge { background: linear-gradient(135deg, #22c55e 0%, #15803d 100%); }
     </style>
 </head>
 <body class="text-gray-800">
 
     <nav class="bg-white shadow-sm border-b-4 border-orange sticky top-0 z-50 px-6 py-4 flex justify-between items-center">
-        <h1 class="text-xl font-black brand-orange">正通科技 | <span class="text-gray-400 font-normal">PRODUCT</span></h1>
-        <div id="itemCount" class="text-xs font-bold bg-gray-100 px-3 py-1 rounded-full">連線中...</div>
+        <h1 class="text-xl font-black brand-orange tracking-tighter">正通科技 <span class="text-gray-300 font-light mx-2">|</span> <span class="text-gray-500 font-bold text-lg">PRODUCT CATALOG</span></h1>
+        <div id="itemCount" class="text-xs font-bold bg-orange/10 text-orange-600 px-3 py-1 rounded-full border border-orange/20">連線中...</div>
     </nav>
 
-    <section class="bg-white border-b p-6">
-        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4">
-            <input type="text" id="keywordSearch" oninput="filterData()" placeholder="🔍 搜尋型號或關鍵字..." 
-                   class="border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none shadow-inner text-sm">
-            
-            <select id="brandFilter" onchange="updateCategoryMenu(); filterData();" class="border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none bg-white text-sm">
-                <option value="">所有品牌</option>
-            </select>
+    <section class="bg-white border-b p-6 shadow-sm">
+        <div class="max-w-7xl mx-auto flex flex-col gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 mb-1 ml-1">快速搜尋 (型號/名稱)</label>
+                    <input type="text" id="keywordSearch" oninput="filterData()" placeholder="🔍 搜尋關鍵字..." 
+                           class="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none bg-gray-50 transition-all text-sm">
+                </div>
+                
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 mb-1 ml-1">品牌</label>
+                    <select id="brandFilter" onchange="updateCategoryMenu(); filterData();" 
+                            class="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none bg-white text-sm cursor-pointer">
+                        <option value="">所有品牌</option>
+                    </select>
+                </div>
 
-            <select id="categoryFilter" onchange="filterData()" class="border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none bg-white text-sm">
-                <option value="">所有分類</option>
-            </select>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-400 mb-1 ml-1">產品分類</label>
+                    <select id="categoryFilter" onchange="filterData()" 
+                            class="w-full border-2 border-gray-100 p-3 rounded-xl focus:border-orange outline-none bg-white text-sm cursor-pointer">
+                        <option value="">所有分類</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 ml-1">
+                <input type="checkbox" id="stockOnly" onchange="filterData()" class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange accent-orange-500">
+                <label for="stockOnly" class="text-sm font-bold text-gray-600 cursor-pointer">僅顯示常備品 (Y)</label>
+            </div>
         </div>
     </section>
 
     <main class="max-w-7xl mx-auto p-6 min-h-screen">
         <div id="loader" class="flex flex-col items-center py-20">
             <div class="loading-spinner w-10 h-10 border-4 border-gray-200 rounded-full mb-4"></div>
-            <p class="text-gray-400">同步雲端資料中...</p>
+            <p class="text-gray-400 font-medium animate-pulse">正在讀取雲端產品資料...</p>
         </div>
+
         <div id="productGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"></div>
-        <div id="noData" class="hidden text-center py-20 text-gray-400">沒有找到產品</div>
+
+        <div id="noData" class="hidden text-center py-24">
+            <div class="text-5xl mb-4">🔍</div>
+            <p class="text-gray-400 font-bold text-lg">找不到相符的產品</p>
+        </div>
     </main>
+
+    <footer class="bg-white border-t border-gray-100 py-10 text-center text-gray-400 text-xs">
+        &copy; 正通科技 Genton Technology - 產品目錄系統 v2.1
+    </footer>
 
     <script>
         const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSEaN95uQx-YbX1GKTcX8Og3GhmvgVNFgGocAopyg7bD6TvyUOOWUgiJAdbvX0GAKHpfs6dw0w2TGH3/pub?output=csv';
         let allProducts = [];
-        let colMap = { brand: '品牌', cat: '分類', part: '料號', name: '品項', file: '型錄檔名' };
+        let colMap = { brand: '品牌', cat: '分類', part: '料號', name: '品項', img: '圖片檔名', spec: '型錄檔名', cert: '認證檔名', stock: '常備品' };
 
         function init() {
             Papa.parse(csvUrl, {
@@ -58,18 +88,19 @@
                 complete: function(results) {
                     const data = results.data;
                     if(data.length > 0) {
-                        // 自動偵測欄位名稱 (相容不同寫法)
-                        const first = data[0];
-                        const keys = Object.keys(first);
-                        colMap.brand = keys.find(k => k.includes('品牌') || k.includes('廠牌')) || '品牌';
-                        colMap.cat = keys.find(k => k.includes('分類') || k.includes('類別')) || '分類';
-                        colMap.part = keys.find(k => k.includes('料號') || k.includes('型號')) || '料號';
-                        colMap.name = keys.find(k => k.includes('品項') || k.includes('名稱')) || '品項';
-                        
+                        const keys = Object.keys(data[0]);
+                        colMap.brand = keys.find(k => k.includes('品牌')) || '品牌';
+                        colMap.cat = keys.find(k => k.includes('分類')) || '分類';
+                        colMap.part = keys.find(k => k.includes('料號')) || '料號';
+                        colMap.name = keys.find(k => k.includes('品項')) || '品項';
+                        colMap.img = keys.find(k => k.includes('圖片')) || '圖片檔名';
+                        colMap.spec = keys.find(k => k.includes('型錄')) || '型錄檔名';
+                        colMap.cert = keys.find(k => k.includes('認證')) || '認證檔名';
+                        colMap.stock = keys.find(k => k.includes('常備品')) || '常備品'; // 自動偵測常備品欄位
+
                         allProducts = data.filter(p => p[colMap.brand] && p[colMap.part]);
-                        
                         buildBrandMenu();
-                        updateCategoryMenu(); // 初始載入分類
+                        updateCategoryMenu();
                         filterData();
                         document.getElementById('loader').classList.add('hidden');
                     }
@@ -83,16 +114,12 @@
             brands.forEach(b => bSelect.add(new Option(b, b)));
         }
 
-        // 核心：連動更新分類選單
         function updateCategoryMenu() {
             const bValue = document.getElementById('brandFilter').value;
             const cSelect = document.getElementById('categoryFilter');
             cSelect.innerHTML = '<option value="">所有分類</option>';
-
-            // 根據選定的品牌過濾出該品牌有的分類
-            const filteredData = bValue === "" ? allProducts : allProducts.filter(p => p[colMap.brand] === bValue);
-            const cats = [...new Set(filteredData.map(p => p[colMap.cat]))].filter(Boolean).sort();
-
+            const scope = bValue === "" ? allProducts : allProducts.filter(p => p[colMap.brand] === bValue);
+            const cats = [...new Set(scope.map(p => p[colMap.cat]))].filter(Boolean).sort();
             cats.forEach(c => cSelect.add(new Option(c, c)));
         }
 
@@ -100,31 +127,59 @@
             const kw = document.getElementById('keywordSearch').value.toLowerCase();
             const b = document.getElementById('brandFilter').value;
             const c = document.getElementById('categoryFilter').value;
+            const sOnly = document.getElementById('stockOnly').checked;
             const grid = document.getElementById('productGrid');
             
             const filtered = allProducts.filter(p => {
-                const matchK = (p[colMap.name]+p[colMap.part]).toLowerCase().includes(kw);
+                const searchStr = (p[colMap.name] + p[colMap.part] + p[colMap.cat]).toLowerCase();
+                const matchK = searchStr.includes(kw);
                 const matchB = b === "" || p[colMap.brand] === b;
                 const matchC = c === "" || p[colMap.cat] === c;
-                return matchK && matchB && matchC;
+                const matchS = sOnly ? (p[colMap.stock] === 'Y' || p[colMap.stock] === 'y') : true;
+                return matchK && matchB && matchC && matchS;
             });
 
             grid.innerHTML = '';
-            document.getElementById('itemCount').innerText = `ITEMS: ${filtered.length}`;
+            document.getElementById('itemCount').innerText = `找到 ${filtered.length} 件產品`;
             document.getElementById('noData').classList.toggle('hidden', filtered.length > 0);
 
             filtered.forEach(p => {
-                const imgSrc = p['圖片檔名'] ? `images/${p['圖片檔名']}` : 'https://placehold.co/400x300?text=No+Image';
+                const imgSrc = p[colMap.img] ? `images/${p[colMap.img]}` : 'https://placehold.co/400x300?text=No+Image';
+                
+                // 判斷是否為常備品
+                const isStock = p[colMap.stock] === 'Y' || p[colMap.stock] === 'y';
+                const stockBadge = isStock ? `<div class="absolute top-2 right-2 stock-badge text-white text-[10px] font-black px-2 py-1 rounded-lg shadow-md z-10">★ 常備品</div>` : '';
+
+                let specPath = p[colMap.spec] || '#';
+                if (specPath !== '#' && !specPath.includes('/')) specPath = `pdf1/${specPath}`;
+                let certPath = p[colMap.cert] || '#';
+                if (certPath !== '#' && !certPath.includes('/')) certPath = `pdftl/${certPath}`;
+
                 grid.innerHTML += `
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition">
-                        <img src="${imgSrc}" class="w-full h-32 object-contain mb-4" onerror="this.src='https://placehold.co/400x300?text=Genton'">
-                        <span class="text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded font-bold">${p[colMap.brand]}</span>
-                        <div class="text-xs text-gray-400 mt-1">${p[colMap.cat]}</div>
-                        <div class="font-mono font-bold text-orange-500 text-sm mt-1">${p[colMap.part]}</div>
-                        <div class="text-xs font-bold text-gray-700 mt-1 line-clamp-2 h-8">${p[colMap.name]}</div>
-                        <button onclick="window.open('${p[colMap.file]||'#'}')" class="mt-4 w-full py-2 bg-gray-50 hover:bg-orange hover:text-white text-gray-500 rounded-lg text-[10px] font-bold transition">SPEC</button>
+                    <div class="card-hover bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col h-full relative">
+                        ${stockBadge}
+                        <div class="h-40 flex items-center justify-center bg-gray-50 rounded-xl mb-4 p-2 overflow-hidden">
+                            <img src="${imgSrc}" class="max-w-full max-h-full object-contain" onerror="this.src='https://placehold.co/400x300?text=Wait+Image'">
+                        </div>
+                        <div class="flex-grow">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-[10px] bg-orange-500 text-white px-2 py-0.5 rounded font-black tracking-widest">${p[colMap.brand]}</span>
+                                <span class="text-[10px] text-gray-400 font-bold uppercase">${p[colMap.cat]}</span>
+                            </div>
+                            <div class="font-mono font-bold text-orange-600 text-xs mt-2">${p[colMap.part]}</div>
+                            <div class="text-sm font-bold text-gray-700 mt-1 line-clamp-2 h-10 leading-snug">${p[colMap.name]}</div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-gray-50">
+                            <button onclick="openFile('${specPath}', '目前暫無型錄檔案')" class="py-2 bg-gray-50 hover:bg-orange hover:text-white text-gray-500 rounded-lg text-[10px] font-black transition-all">📜 型錄</button>
+                            <button onclick="openFile('${certPath}', '目前暫無認證資料')" class="py-2 bg-gray-50 hover:bg-blue-600 hover:text-white text-gray-500 rounded-lg text-[10px] font-black transition-all">🛡️ 認證</button>
+                        </div>
                     </div>`;
             });
+        }
+
+        function openFile(path, msg) {
+            if (path === '#' || path === '') alert(msg);
+            else window.open(path, '_blank');
         }
 
         init();
